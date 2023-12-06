@@ -3,7 +3,7 @@ import logging
 import torch
 
 from configparser import ConfigParser
-from detoxify import Detoxify
+from transformers import pipeline
 
 from utils import ROOT_DIR
 
@@ -21,7 +21,7 @@ class ToxicityHelper():
 		self.load_config_section(config_section)
 
 		cuda_available = torch.cuda.is_available()
-		self._detoxify = Detoxify('original', device='cuda' if cuda_available else 'cpu')
+		self._detoxify = pipeline('unitary/unbiased-toxic-roberta', device=0 if cuda_available else 'cpu')
 
 	def load_config_section(self, config_section):
 		# This can be used to re-configure on the fly.
@@ -39,7 +39,10 @@ class ToxicityHelper():
 		# logging.info(f"ToxicityHelper, testing {input_text}")
 
 		try:
-			results = self._detoxify.predict(input_text)
+			results_list = self._detoxify(input_text)[0]
+			results = {}
+			for result in results_list:
+				results[result['label']] = result['score']
 		except:
 			logging.exception(f"Exception when trying to run detoxify prediction on {input_text}")
 
