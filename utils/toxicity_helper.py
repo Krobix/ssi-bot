@@ -21,7 +21,7 @@ class ToxicityHelper():
 		self.load_config_section(config_section)
 
 		cuda_available = torch.cuda.is_available()
-		self._detoxify = Detoxify('unbiased', device='cuda' if cuda_available else 'cpu')
+		self._detoxify = Detoxify('original', device='cuda' if cuda_available else 'cpu')
 
 	def load_config_section(self, config_section):
 		# This can be used to re-configure on the fly.
