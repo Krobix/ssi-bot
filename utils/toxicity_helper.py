@@ -39,7 +39,8 @@ class ToxicityHelper():
 		# logging.info(f"ToxicityHelper, testing {input_text}")
 
 		try:
-			results_list = self._detoxify(input_text)[0]
+			results_list = self._detoxify(input_text, top_k=None, function_to_apply="none")
+			#print(results_list)
 			results = {}
 			for result in results_list:
 				results[result['label']] = result['score']
@@ -48,9 +49,9 @@ class ToxicityHelper():
 
 		# logging.info(f"ToxicityHelper, results are {results}")
 
-		if self._threshold_map.keys() != results.keys():
-			logging.warning(f"Detoxify results keys and threshold map keys do not match. The toxicity level of the input text cannot be calculated.")
-			return True
+		#if self._threshold_map.keys() != results.keys():
+		#	logging.warning(f"Detoxify results keys and threshold map keys do not match. The toxicity level of the input text cannot be calculated.")
+		#	return True
 
 		for key in self._threshold_map:
 			if results[key] > self._threshold_map[key]:
