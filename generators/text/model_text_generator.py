@@ -95,7 +95,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							continue
 
 						# if the model generated text, set it into the 'job'
-						job.generated_text = generated_text
+						job.generated_text = generated_text.replace('<|n|>','\n')
 						job.save()
 
 				except:
