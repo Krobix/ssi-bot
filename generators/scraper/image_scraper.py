@@ -3,7 +3,7 @@
 import json
 import logging
 import nltk
-import requests
+#import requests
 import threading
 import time
 import urllib.parse
@@ -18,6 +18,8 @@ from reddit_io.tagging_mixin import TaggingMixin
 
 from bot_db.db import Thing as db_Thing
 
+from duckduckgo_images_api import search
+import random
 
 class ImageScraper(threading.Thread, TaggingMixin):
 
@@ -66,7 +68,7 @@ class ImageScraper(threading.Thread, TaggingMixin):
 
 	def _download_image_for_search_string(self, bot_username, image_generation_parameters, attempt):
 
-		logging.info(f"{bot_username} is searching on Bing for an image..")
+		logging.info(f"{bot_username} is searching on DuckDuckGo for an image..")
 
 		# pop the prefix out from the parameters
 		search_prefix = image_generation_parameters.pop('image_post_search_prefix', None)
@@ -99,36 +101,11 @@ class ImageScraper(threading.Thread, TaggingMixin):
 		# Convert all of the keywords back into a single string
 		search_keywords_as_string = ' '.join(search_keywords)
 
-		# Collect and encode all search url parameters
-		# If on the 2nd attempt, jump ahead
-		search_parameters = {'q': search_keywords_as_string,
-							'form': 'HDRSC2',
-							# 'qft': '+filterui:photo-photo',
-							# 'qft': '+filterui:imagesize-large',
-							'safeSearch': 'strict',
-							'first': int(1 + (attempt * 10))}
+		results = search(search_keywords_as_string)
 
-		encoded_search_parameters = urllib.parse.urlencode(search_parameters)
-		search_url = "https://www.bing.com/images/search?" + encoded_search_parameters
-
-		logging.info(f"Searching for an image with url: {search_url}")
-
-		# Use Win10 Edge User Agent
-		header = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36 Edg/92.0.902.78"}
-
-		r = requests.get(search_url, headers=header)
-
-		if r.ok:
-			soup = BeautifulSoup(r.text, 'html.parser')
-			link_results = soup.find_all("a", {"class": "iusc"})
-
-			for link in link_results[:10]:
-				if link.has_attr('m'):
-					# convert json in the link's attributes into a python dict
-					m = json.loads(link["m"])
-					if 'murl' in m:
-						image_url = m['murl']
-						return image_url
+		r = random.randint(0,len(results)-1)
+		image_url = r["image"]
+		return image_url
 
 	def top_pending_jobs(self):
 		"""
