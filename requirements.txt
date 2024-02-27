@@ -9,4 +9,3 @@ pytest
 requests
 simpletransformers==0.63.4
 torch
-duckduckgo_images_api
