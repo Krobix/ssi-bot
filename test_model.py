@@ -6,7 +6,7 @@ from simpletransformers.language_generation import LanguageGenerationModel, Lang
 
 def main():
 
-	model_path = "models/<model_folder>/"
+	model_path = "models/factboyv2/"
 	lgm_args = {'fp16': False,
 				'cache_dir': f"{model_path}.cache/",
 			}

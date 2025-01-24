@@ -25,11 +25,14 @@ def main():
 
 	start_scraper_daemon = False
 	start_t2i_daemon = False
+	
+	mtgl = []
 
 	for bot in bot_config.sections():
 
 		# initialise reddit_io
 		bot_io = RedditIO(bot_username=bot)
+		mtgl.append(ModelTextGenerator(bot))
 
 		# Start the reddit IO daemon which will pick up incoming
 		# submissions/comments and send outgoing ones
@@ -41,8 +44,8 @@ def main():
 			start_t2i_daemon = True
 
 	# Start the text generation daemon
-	mtg = ModelTextGenerator()
-	mtg.start()
+	for mtg in mtgl:
+		mtg.start()
 
 	if start_scraper_daemon:
 		print('starting scraper daemon')

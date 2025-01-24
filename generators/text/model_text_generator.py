@@ -35,11 +35,14 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 	# This will need to be increased for larger GPT-2 models
 	_memory_required = 1400000
 
-	def __init__(self):
+	def __init__(self, username):
 		threading.Thread.__init__(self)
 
 		self._config = ConfigParser()
 		self._config.read('ssi-bot.ini')
+		
+		self.username = username
+		self.name = f"{username}_MTG"
 
 		# Configure the keyword helper to check negative keywords in the generated text
 		self._toxicity_helper = ToxicityHelper()
@@ -74,7 +77,26 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 
 					if generated_text:
-
+					
+						irp = ["[removed]", "[deleted]"]
+						c=0
+						tries=0
+						max_tries=10
+						while c<len(irp):
+							if tries>=max_tries:
+								break
+							
+							if irp[c] in generated_text:
+								c=0
+								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
+								tries+=1
+								continue
+							else:
+								c+=1
+							
+						if tries>=max_tries:
+							continue
+ 
 						# Check for any negative keywords in the generated text and if so, return nothing
 						negative_keyword_matches = self.test_text_against_keywords(job.bot_username, generated_text)
 						if negative_keyword_matches:
@@ -113,12 +135,19 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
 		# If you have a nvidia GPU you may enable these features
 		# TODO shift these parameters into the ssi-bot.ini file
-		model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False})
+		model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False, "max_seq_length": 1024})
 
 		start_time = time.time()
 
 		# pop the prompt out from the args
 		prompt = text_generation_parameters.pop('prompt', '')
+		
+		if len(prompt)>1024:
+			prompt = prompt[len(prompt)-1024:]#b
+			promptl = prompt.split(" ")
+			if not prompt.startswith("<|"):
+				promptl.pop(0)
+			prompt = " ".join(promptl)
 
 		output_list = model.generate(prompt=prompt, args=text_generation_parameters)
 
@@ -140,6 +169,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		query = db_Thing.select(db_Thing).\
 					where(db_Thing.status == 3).\
+					where(db_Thing.bot_username == self.username). \
 					order_by(db_Thing.created_utc)
 		return list(query)
 
