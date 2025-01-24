@@ -1,3 +1,15 @@
+##My Changes
+- Make it so that each different bot has its own text generation thread
+- Add new dataset_downl.sh script so that you don't have to manually restart data download script
+- Make it so that certain generations (text that is just [removed] or [deleted]) is regenerated immediately
+- Replace original download script with one that uses pushshift
+- Try to fix some bugs but they a re still there and there are also some new one too (cut off generated text) that will probably not be fixed
+
+Some fo the following instructions are probably outdated now.
+
+Follow the instructions up until you need to edit dataset.ini. Edit it appropriately, and then run dataset_downl.sh to download data from pushshift. 
+
+
 
 Minimum Python requirement: Python 3.7
 
