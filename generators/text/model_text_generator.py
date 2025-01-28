@@ -97,7 +97,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 						if tries>=max_tries:
 							continue
 
-						no_filter = job.text_generation_parameters["nofilter"]
+						if "nofilter" in job.text_generation_parameters:
+							no_filter = job.text_generation_parameters["nofilter"]
+						else:
+							no_filter = False
 						###########
 
 						# Check for any negative keywords in the generated text and if so, return nothing
