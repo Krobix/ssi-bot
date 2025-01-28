@@ -190,6 +190,12 @@ class RedditIO(threading.Thread, LogicMixin):
 
 					# It will generate a reply, so grab the parameters before we put it into the database
 					text_generation_parameters = self.get_text_generation_parameters(praw_thing)
+					#this part added by Krobix now.
+					#basically they will no longer use toxicity filters in direct messages
+					if isinstance(praw_thing, praw_Message):
+						text_generation_parameters["nofilter"] = True
+					else:
+						text_generation_parameters["nofilter"] = False
 				else:
 					logging.info(f"{praw_thing} Random value {random_value:.3f} is not < reply probabililty {(reply_probability):.3f}. No reply.. :(")
 

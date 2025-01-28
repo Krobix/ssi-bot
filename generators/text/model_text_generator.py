@@ -77,7 +77,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 
 					if generated_text:
-					
+						####added by Krobix
 						irp = ["[removed]", "[deleted]"]
 						c=0
 						tries=0
@@ -96,10 +96,13 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							
 						if tries>=max_tries:
 							continue
- 
+
+						no_filter = job.text_generation_parameters["nofilter"]
+						###########
+
 						# Check for any negative keywords in the generated text and if so, return nothing
 						negative_keyword_matches = self.test_text_against_keywords(job.bot_username, generated_text)
-						if negative_keyword_matches:
+						if negative_keyword_matches and (not no_filter):
 							# A negative keyword was found, so don't post this text back to reddit
 							logging.info(f"Negative keywords {negative_keyword_matches} found in generated text, this text will be rejected.")
 							continue
@@ -112,7 +115,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							continue
 
 						toxicity_failure = self.validate_toxicity(job.bot_username, prompt, generated_text)
-						if toxicity_failure:
+						if toxicity_failure and (not no_filter):
 							logging.info(f"Generated text for {job} failed toxicity test, this text will be rejected.-> {generated_text}")
 							continue
 
