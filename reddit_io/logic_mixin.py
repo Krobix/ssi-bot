@@ -131,7 +131,7 @@ class LogicMixin(TaggingMixin):
 		if submission_link_flair_text.lower() in ['announcement']:
 			return 0
 
-		if self._toxicity_helper.text_above_toxicity_threshold(thing_text_content):
+		if self._toxicity_helper.text_above_toxicity_threshold(thing_text_content) and (not isinstance(praw_thing, praw_Message)):
 			# The text is above the toxicity as measured by the detoxify model
 			logging.info(f"{praw_thing} Failed toxicity test, no reply..")
 			return 0
