@@ -45,6 +45,9 @@ def main():
 
 	# Start the text generation daemon
 	for mtg in mtgl:
+		if "temperature" in bot_config[mtg.username]:
+			mtg.temperature = bot_config[mtg.username]["temperature"]
+			print(f"Setting temperature for {mtg.username} to {mtg.temperature}")
 		mtg.start()
 
 	if start_scraper_daemon:

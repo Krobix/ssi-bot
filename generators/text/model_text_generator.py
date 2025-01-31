@@ -35,7 +35,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 	# This will need to be increased for larger GPT-2 models
 	_memory_required = 1400000
 
-	def __init__(self, username):
+	def __init__(self, username, temp=0.8):
 		threading.Thread.__init__(self)
 
 		self._config = ConfigParser()
@@ -43,6 +43,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		
 		self.username = username
 		self.name = f"{username}_MTG"
+		self.temperature = temp
 
 		# Configure the keyword helper to check negative keywords in the generated text
 		self._toxicity_helper = ToxicityHelper()
@@ -147,6 +148,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		# pop the prompt out from the args
 		prompt = text_generation_parameters.pop('prompt', '')
+		#set temp
+		text_generation_parameters["temperature"] = self.temperature
 		
 		if len(prompt)>1024:
 			prompt = prompt[len(prompt)-1024:]#b
