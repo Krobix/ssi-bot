@@ -149,7 +149,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		# pop the prompt out from the args
 		prompt = text_generation_parameters.pop('prompt', '')
 		#set temp
-		text_generation_parameters["temperature"] = self.temperature
+		text_generation_parameters["temperature"] = float(self.temperature)
 		
 		if len(prompt)>1024:
 			prompt = prompt[len(prompt)-1024:]#b
