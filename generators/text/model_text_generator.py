@@ -142,7 +142,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
 		# If you have a nvidia GPU you may enable these features
 		# TODO shift these parameters into the ssi-bot.ini file
-		model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False, "max_seq_length": 1024})
+		model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False, "max_seq_length": 2048})
 
 		start_time = time.time()
 
@@ -151,8 +151,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		#set temp
 		text_generation_parameters["temperature"] = float(self.temperature)
 		
-		if len(prompt)>1024:
-			prompt = prompt[len(prompt)-1024:]#b
+		if len(prompt)>2048:
+			prompt = prompt[len(prompt)-2048:]#b
 			promptl = prompt.split(" ")
 			if not prompt.startswith("<|"):
 				promptl.pop(0)
