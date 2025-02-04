@@ -148,7 +148,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
-			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)
+			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)["choices"][0]["text"]
+			logging.info(f"llama finished generating: {str(gen)}")
+			#llama is too fucking fast apparently?
+			time.sleep(300)
 			return str(gen)
 
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
