@@ -8,6 +8,7 @@ from pathlib import Path
 from configparser import ConfigParser
 
 from simpletransformers.language_generation import LanguageGenerationModel
+from llama_cpp import Llama
 
 from reddit_io.tagging_mixin import TaggingMixin
 from bot_db.db import Thing as db_Thing
@@ -40,10 +41,15 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		self._config = ConfigParser()
 		self._config.read('ssi-bot.ini')
+		self.llama = None
 		
 		self.username = username
 		self.name = f"{username}_MTG"
-		self.temperature = temp
+		self.temperature = float(temp)
+		if self._config[self.username]["text_model_path"].endswith("gguf"):
+			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=2048, n_batch=1024, n_threads=6, n_threads_batch=12)
+
+		
 
 		# Configure the keyword helper to check negative keywords in the generated text
 		self._toxicity_helper = ToxicityHelper()
@@ -138,6 +144,12 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 	def generate_text(self, bot_username, text_generation_parameters):
 
 		model_path = self._config[bot_username]['text_model_path']
+		prompt = text_generation_parameters.pop('prompt', '')
+
+		if self.llama is not None:
+			logging.info("Generating text using llama")
+			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)
+			return str(gen)
 
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
 		# If you have a nvidia GPU you may enable these features
@@ -147,7 +159,6 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		start_time = time.time()
 
 		# pop the prompt out from the args
-		prompt = text_generation_parameters.pop('prompt', '')
 		#set temp
 		text_generation_parameters["temperature"] = float(self.temperature)
 		
