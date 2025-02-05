@@ -153,7 +153,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 			gen=prompt+gen
 			logging.info(f"llama finished generating: {str(gen)}")
 			#llama is too fucking fast apparently?
-			time.sleep(120)
+			#time.sleep(120)
 			return str(gen)
 
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
