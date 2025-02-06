@@ -89,11 +89,16 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 						c=0
 						tries=0
 						max_tries=10
-						while c<len(irp) and type(generated_text) is tuple:
+						while c<len(irp):
 							if tries>=max_tries:
 								break
+
+							if type(generated_text) is tuple:
+								gen = generated_text[1]
+							else:
+								gen = generated_text
 							
-							if irp[c] in generated_text[1]:
+							if irp[c] in gen:
 								c=0
 								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 								tries+=1
