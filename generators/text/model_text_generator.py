@@ -89,11 +89,11 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 						c=0
 						tries=0
 						max_tries=10
-						while c<len(irp):
+						while c<len(irp) and type(generated_text) is tuple:
 							if tries>=max_tries:
 								break
 							
-							if irp[c] in generated_text:
+							if irp[c] in generated_text[1]:
 								c=0
 								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 								tries+=1
@@ -108,6 +108,9 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							no_filter = job.text_generation_parameters["nofilter"]
 						else:
 							no_filter = False
+
+						if type(generated_text) is tuple:
+							generated_text = "".join(generated_text)
 						###########
 
 						# Check for any negative keywords in the generated text and if so, return nothing
@@ -150,11 +153,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 			logging.info("Generating text using llama")
 			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)["choices"][0]["text"].split("<|")[0]
 			gen += "<|"
-			gen=prompt+gen
 			logging.info(f"llama finished generating: {str(gen)}")
 			#llama is too fucking fast apparently?
 			#time.sleep(120)
-			return str(gen)
+			return (prompt,str(gen))
 
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
 		# If you have a nvidia GPU you may enable these features
