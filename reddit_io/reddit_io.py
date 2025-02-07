@@ -113,6 +113,9 @@ class RedditIO(threading.Thread, LogicMixin):
 		# this will automatically pick up the configuration from praw.ini
 		self._praw = praw.Reddit(self._bot_username, timeout=64)
 
+		if "end_token" in self._config[self._bot_username]:
+			self._end_tag = self._config[self._bot_username]["end_token"]
+
 	def run(self):
 
 		# synchronize bot's own posts to the database

@@ -47,7 +47,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		self.name = f"{username}_MTG"
 		self.temperature = float(temp)
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
-			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=2048, n_batch=1024, n_threads=6, n_threads_batch=12)
+			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=4096, n_batch=1024, n_threads=6, n_threads_batch=12)
+
+		if "end_token" in self._config[self.username]:
+			self._end_tag = self._config[self.username]["end_token"]
 
 		
 
@@ -156,8 +159,16 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
-			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)["choices"][0]["text"].split("<|")[0]
-			gen += "<|"
+			##Zephyr stuff
+			if "system_prompt" in self._config[self.username]:
+				prompt = f"<|system|>{self._config[self.username]['system_prompt']}{self._end_tag}{prompt}"
+				for t in (self._reply_end_tag, "<|eot|>", "<|eoocr|>"):
+					while t in prompt:
+						prompt = prompt.replace(t, str(self._end_tag))
+				prompt = prompt.replace("<|sor|>", "<|assistant|>")
+			
+			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)["choices"][0]["text"].split(self._end_tag)[0]
+			gen += self._end_tag
 			logging.info(f"llama finished generating: {str(gen)}")
 			#llama is too fucking fast apparently?
 			#time.sleep(120)
