@@ -43,7 +43,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		self._config = ConfigParser()
 		self._config.read('ssi-bot.ini')
 		self.llama = None
-		self.subreddits = None
+		self.subreplace = None
 		
 		self.username = username
 		self.name = f"{username}_MTG"
@@ -51,8 +51,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=4096, n_batch=1024, n_threads=6, n_threads_batch=12)
 
-		if "subreddits" in self._config[self.username]:
-			self.subreddits = self._config[self.username].split(",")
+		if "subreplace" in self._config[self.username]:
+			self.subreplace = self._config[self.username].split(",")
 
 		if "end_token" in self._config[self.username]:
 			self._end_tag = self._config[self.username]["end_token"]
@@ -162,8 +162,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		model_path = self._config[bot_username]['text_model_path']
 		prompt = text_generation_parameters.pop('prompt', '')
 
-		if self.subreddits is not None and sub is not None:
-			newsub = random.choice(self.subreddits)
+		if self.subreplace is not None and sub is not None:
+			newsub = random.choice(self.subreplace)
 			while sub in prompt:
 				prompt.replace(sub, newsub)
 
