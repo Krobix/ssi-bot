@@ -52,7 +52,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=4096, n_batch=1024, n_threads=6, n_threads_batch=12)
 
 		if "subreplace" in self._config[self.username]:
-			self.subreplace = self._config[self.username].split(",")
+			self.subreplace = self._config[self.username]["subreplace"].split(",")
 
 		if "end_token" in self._config[self.username]:
 			self._end_tag = self._config[self.username]["end_token"]
