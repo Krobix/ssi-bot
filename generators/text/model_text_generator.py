@@ -3,6 +3,7 @@
 import logging
 import threading
 import time
+import random
 
 from pathlib import Path
 from configparser import ConfigParser
@@ -42,12 +43,16 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		self._config = ConfigParser()
 		self._config.read('ssi-bot.ini')
 		self.llama = None
+		self.subreddits = None
 		
 		self.username = username
 		self.name = f"{username}_MTG"
 		self.temperature = float(temp)
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=4096, n_batch=1024, n_threads=6, n_threads_batch=12)
+
+		if "subreddits" in self._config[self.username]:
+			self.subreddits = self._config[self.username].split(",")
 
 		if "end_token" in self._config[self.username]:
 			self._end_tag = self._config[self.username]["end_token"]
@@ -84,7 +89,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 					# use the model to generate the text
 					# pass a copy of the parameters to keep the job values intact
-					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
+					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy(), sub=job.subreddit)
 
 					if generated_text:
 						####added by Krobix
@@ -103,7 +108,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							
 							if irp[c] in gen:
 								c=0
-								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
+								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy(), sub=job.subreddit)
 								tries+=1
 								continue
 							else:
@@ -152,10 +157,15 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					job.text_generation_attempts += 1
 					job.save()
 
-	def generate_text(self, bot_username, text_generation_parameters):
+	def generate_text(self, bot_username, text_generation_parameters,sub=None):
 
 		model_path = self._config[bot_username]['text_model_path']
 		prompt = text_generation_parameters.pop('prompt', '')
+
+		if self.subreddits is not None and sub is not None:
+			newsub = random.choice(self.subreddits)
+			while sub in prompt:
+				prompt.replace(sub, newsub)
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
@@ -209,7 +219,6 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		Three attempts at text generation are allowed.
 
 		"""
-
 		query = db_Thing.select(db_Thing).\
 					where(db_Thing.status == 3).\
 					where(db_Thing.bot_username == self.username). \
