@@ -2,14 +2,14 @@ from simpletransformers.language_modeling import LanguageModelingModel
 from datetime import datetime
 
 # edit these to include the names of the training and eval .txt files created by output_finetuning_data.py
-training_file = "bot_train.txt"
-eval_file = "bot_eval.txt"
+training_file = "training_output_1802251958_train.txt"
+eval_file = "training_output_1802251958_eval.txt"
 
 # the model type to use, you can usually just leave this as-is unless you'd like to experiment with other transformers
 model_type = "gpt2"
 # IF USING GPT2: for the small model, use just "gpt2", otherwise append "-medium"/"-large"/"-xl" depending on the model size you'd like to use
 # anything above small is very unlikely to run unless you have a whole lot of memory and a beefy GPU - even the colab instance usually can't do medium
-model_name = "gpt2"
+model_name = "gpt2-large"
 
 # if set to False, training will occur exclusively on the CPU without multiprocessing (this will be EXTREMELY slow but will work on more systems)
 use_gpu = False
@@ -48,7 +48,7 @@ args = {
     # disable saving each step to save disk space
     "save_steps": -1, 
 
-    "use_multiprocessing": use_gpu, # set to false when not using a gpu due to instability (often throws RuntimeErrors)
+    "use_multiprocessing": True, # set to false when not using a gpu due to instability (often throws RuntimeErrors)
 
     "output_dir": f"{bot_label}/",
     "best_model_dir": f"{bot_label}/best_model",

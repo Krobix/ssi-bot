@@ -185,12 +185,12 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		#set temp
 		text_generation_parameters["temperature"] = float(self.temperature)
 		
-		if len(prompt)>2048:
-			prompt = prompt[len(prompt)-2048:]#b
-			promptl = prompt.split(" ")
-			if not prompt.startswith("<|"):
-				promptl.pop(0)
-			prompt = " ".join(promptl)
+		#if len(prompt)>2048:
+		#	prompt = prompt[len(prompt)-2048:]#b
+		#	promptl = prompt.split(" ")
+		#	if not prompt.startswith("<|"):
+		#		promptl.pop(0)
+		#	prompt = " ".join(promptl)
 
 		output_list = model.generate(prompt=prompt, args=text_generation_parameters)
 
