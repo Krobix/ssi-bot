@@ -89,7 +89,13 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 					# use the model to generate the text
 					# pass a copy of the parameters to keep the job values intact
-					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy(), sub=job.subreddit)
+
+					if self.subreplace is not None and job.subreddit is not None:
+						newsub = random.choice(self.subreplace)
+						while job.subreddit in job.text_generation_parameters["prompt"]:
+							job.text_generation_parameters["prompt"] = job.text_generation_parameters["prompt"].replace(job.subreddit, newsub)
+
+					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 
 					if generated_text:
 						####added by Krobix
@@ -108,7 +114,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 							
 							if irp[c] in gen:
 								c=0
-								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy(), sub=job.subreddit)
+								generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
 								tries+=1
 								continue
 							else:
@@ -157,15 +163,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					job.text_generation_attempts += 1
 					job.save()
 
-	def generate_text(self, bot_username, text_generation_parameters,sub=None):
+	def generate_text(self, bot_username, text_generation_parameters):
 
 		model_path = self._config[bot_username]['text_model_path']
 		prompt = text_generation_parameters.pop('prompt', '')
-
-		if self.subreplace is not None and sub is not None:
-			newsub = random.choice(self.subreplace)
-			while sub in prompt:
-				prompt = prompt.replace(sub, newsub)
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
