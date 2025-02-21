@@ -165,7 +165,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		if self.subreplace is not None and sub is not None:
 			newsub = random.choice(self.subreplace)
 			while sub in prompt:
-				prompt.replace(sub, newsub)
+				prompt = prompt.replace(sub, newsub)
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
