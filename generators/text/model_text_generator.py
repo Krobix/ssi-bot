@@ -169,13 +169,6 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
-			##Zephyr stuff
-			if "system_prompt" in self._config[self.username]:
-				prompt = f"<|system|>{self._config[self.username]['system_prompt']}{self._end_tag}{prompt}"
-				for t in (self._reply_end_tag, "<|eot|>", "<|eoocr|>"):
-					while t in prompt:
-						prompt = prompt.replace(t, str(self._end_tag))
-				prompt = prompt.replace("<|sor|>", "<|assistant|>")
 			
 			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512)["choices"][0]["text"].split(self._end_tag)[0]
 			gen += self._end_tag
@@ -195,12 +188,12 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		#set temp
 		text_generation_parameters["temperature"] = float(self.temperature)
 		
-		if len(prompt)>2048:
-			prompt = prompt[len(prompt)-2048:]#b
-			promptl = prompt.split(" ")
-			if not prompt.startswith("<|"):
-				promptl.pop(0)
-			prompt = " ".join(promptl)
+		#if len(prompt)>2048:
+		#	prompt = prompt[len(prompt)-2048:]#b
+		#	promptl = prompt.split(" ")
+		#	if not prompt.startswith("<|"):
+		#		promptl.pop(0)
+		#	prompt = " ".join(promptl)
 
 		output_list = model.generate(prompt=prompt, args=text_generation_parameters)
 
