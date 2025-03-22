@@ -2,8 +2,8 @@ from simpletransformers.language_modeling import LanguageModelingModel
 from datetime import datetime
 
 # edit these to include the names of the training and eval .txt files created by output_finetuning_data.py
-training_file = "training_output_1802251958_train.txt"
-eval_file = "training_output_1802251958_eval.txt"
+training_file = "zamplarge_train.txt"
+eval_file = "zamplarge_eval.txt"
 
 # the model type to use, you can usually just leave this as-is unless you'd like to experiment with other transformers
 model_type = "gpt2"
@@ -15,7 +15,7 @@ model_name = "gpt2-large"
 use_gpu = False
 
 current_date_time = datetime.now()
-bot_label = "bot_" + current_date_time.strftime("%d%m%Y_%H%M")
+bot_label = "zamplarge_bot"
 
 args = {
     "overwrite_output_dir": True,
