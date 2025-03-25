@@ -10,6 +10,7 @@ model_finetuning/*.sqlite3
 model_finetuning/dataset.ini
 model_finetuning/training_output*
 cache_dir/*
+core
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
