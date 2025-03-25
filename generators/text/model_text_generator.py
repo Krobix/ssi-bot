@@ -37,7 +37,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 	# This will need to be increased for larger GPT-2 models
 	_memory_required = 1400000
 
-	def __init__(self, username, temp=0.8):
+	def __init__(self, username, temprange=(0.8, 1.2)):
 		threading.Thread.__init__(self)
 
 		self._config = ConfigParser()
@@ -47,7 +47,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		
 		self.username = username
 		self.name = f"{username}_MTG"
-		self.temperature = float(temp)
+		self.temprange=temprange
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=4096, n_batch=1024, n_threads=6, n_threads_batch=12)
 			self.logit_bias = {self.llama.token_eos(): -10.0}
@@ -168,11 +168,12 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		model_path = self._config[bot_username]['text_model_path']
 		prompt = text_generation_parameters.pop('prompt', '')
+		temp = random.uniform(float(self.temprange[0]), float(self.temprange[1]))
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
 			
-			gen = self.llama(prompt=prompt, temperature=float(self.temperature), max_tokens=512, logit_bias=self.logit_bias)["choices"][0]["text"]
+			gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=512, logit_bias=self.logit_bias)["choices"][0]["text"]
 			#gen += self._end_tag
 			logging.info(f"llama finished generating: {str(gen)}")
 			#llama is too fucking fast apparently?
@@ -188,7 +189,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		# pop the prompt out from the args
 		#set temp
-		text_generation_parameters["temperature"] = float(self.temperature)
+		text_generation_parameters["temperature"] = float(temp)
 		
 		#if len(prompt)>2048:
 		#	prompt = prompt[len(prompt)-2048:]#b
