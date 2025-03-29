@@ -177,7 +177,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 			gen = str(gen)
 			if gen.endswith("<|"):
 				gen = gen[:len(gen)-2]
-			if prompt.endswith("<|sot|>"):
+			if prompt.endswith("<|sot|>") and prompt.startswith("<|soss"):
 				logging.info("Title generated for text post, proceeding to generate text post body")
 				gen = str(gen) + "<|sost|>"
 				gen = self.llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
