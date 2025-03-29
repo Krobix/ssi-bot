@@ -50,12 +50,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		self.temprange=temprange
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
-			self.logit_bias = {self.llama.token_eos(): -25.0}
-			#Make <|sost|> more likely
-			sost_tokens = self.llama.tokenize(b"<|sost|>")
-			for t in sost_tokens:
-				self.logit_bias[t] = 25.0
-
+			self.logit_bias = {self.llama.token_eos(): -15.0}
+			
 		if "subreplace" in self._config[self.username]:
 			self.subreplace = self._config[self.username]["subreplace"].split(",")
 
@@ -176,12 +172,20 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 		if self.llama is not None:
 			logging.info("Generating text using llama")
+			gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
+			#if this is a text post.... add the text!!!!!!
+			gen = str(gen)
+			if gen.endswith("<|"):
+				gen = gen[:len(gen)-2]
+			if prompt.endswith("<|sot|>"):
+				logging.info("Title generated for text post, proceeding to generate text post body")
+				gen = str(gen) + "<|sost|>"
+				gen = self.llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
+				gen = str(gen)
+			if not gen.endswith("<|"):
+				gen += "<|"
 			
-			gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias)["choices"][0]["text"]
-			#gen += self._end_tag
 			logging.info(f"llama finished generating: {str(gen)}")
-			#llama is too fucking fast apparently?
-			#time.sleep(120)
 			return (prompt,str(gen))
 
 		# if you are generating on CPU, keep use_cuda and fp16 both false.
