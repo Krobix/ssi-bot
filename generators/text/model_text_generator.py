@@ -50,7 +50,8 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 		self.temprange=temprange
 		if self._config[self.username]["text_model_path"].endswith("gguf"):
 			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
-			self.logit_bias = {self.llama.token_eos(): -15.0}
+			#self.logit_bias = {self.llama.token_eos(): -15.0}
+			self.logit_bias = {}
 			
 		if "subreplace" in self._config[self.username]:
 			self.subreplace = self._config[self.username]["subreplace"].split(",")

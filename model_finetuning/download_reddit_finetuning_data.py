@@ -98,7 +98,10 @@ def write_to_database(q):
 
                         json_item['selftext'] = clean_text(json_item['selftext'])
 
-                        db_record = db_Submission.create(**json_item)
+                        try:
+                            db_record = db_Submission.create(**json_item)
+                        except AttributeError:
+                            pass
                         if verbose:
                             print(f"submission {json_item['id']} written to database")
         except ValueError:

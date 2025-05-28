@@ -10,3 +10,5 @@ requests
 simpletransformers==0.63.4
 torch
 llama_cpp_python
+libtorrent
+zstandard
