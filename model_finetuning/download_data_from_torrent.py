@@ -1,9 +1,11 @@
 #Download finetuning data from Academic Torrents https://academictorrents.com/details/1614740ac8c94505e4ecb9d88be8bed7b6afddd4
 #Only contains data up to December 2024
-import configparser, libtorrent, zstandard, os, time, queue, json, random, sys, shutil, pickle
+import configparser, libtorrent, zstandard, os, time, queue, json, random, sys, shutil, pickle, threading
 from datetime import datetime
 
 TORRENT = "reddit_archive.torrent"
+
+THREAD_NUM = 8
 
 ti = libtorrent.torrent_info(TORRENT)
 ses = libtorrent.session()
@@ -36,7 +38,7 @@ data_len = random.randint(MIN_DATA_LEN, MAX_DATA_LEN)
 
 eval_len = int(data_len/10)
 
-dbq = queue.Queue()
+dataq = queue.Queue()
 
 for sub in subreddits:
     print(f"Downloading data for {sub}")
@@ -153,6 +155,7 @@ class ShatteredList:
     def __init__(self, sfl, dir):
         self.sfl = sfl
         self.lenf = 0
+        self.lock = threading.RLock()
         self.len = 0
         self.loaded_num = -1
         self.dir = dir
@@ -163,6 +166,7 @@ class ShatteredList:
                     self.len += len(pickle.load(f))
             self.load_index(0)
         else:
+            os.mkdir(self.dir)
             self.loaded = []
             self.loaded_num = 0
 
@@ -170,24 +174,31 @@ class ShatteredList:
         return f"{self.dir}/{num}.bin"
     
     def commit(self):
+        self.lock.acquire()
         if self.loaded_num<0:
+            self.lock.release()
             return
         with open(self.path(self.loaded_num), "wb") as f:
             pickle.dump(self.loaded, f)
+        self.lock.release()
 
     def load_index(self, ind):
         #returns "real index"
+        self.lock.acquire()
         loc = int(ind / self.sfl)
         if loc == self.loaded_num:
+            self.lock.release()
             return ind % self.sfl
         self.commit()
         self.loaded_num = loc
         with open(self.path(self.loaded_num), "rb") as f:
             self.loaded = pickle.load(f)
         #assert (len(self.loaded)==self.sfl) or (self.loaded_num==self.lenf), f"List length wrong T-T len(self.loaded)={len(self.loaded)}"
+        self.lock.release()
         return ind % self.sfl
     
     def append(self, obj):
+        self.lock.acquire()
         if len(self.loaded) >= self.sfl:
             self.commit()
             self.lenf += 1
@@ -195,12 +206,16 @@ class ShatteredList:
             self.loaded = []
         self.loaded.append(obj)
         self.len+=1
+        self.lock.release()
 
     def __getitem__(self, ind):
+        self.lock.acquire()
         nind = self.load_index(ind)
+        self.lock.release()
         return self.loaded[nind]
     
     def pop(self, ind):
+        self.lock.acquire()
         nind = self.load_index(ind)
         obj = self.loaded.pop(nind)
         while self.loaded_num < self.lenf:
@@ -214,10 +229,12 @@ class ShatteredList:
             self.load_index((self.loaded_num+1)*self.sfl)
         self.len -= 1
         self.load_index(ind)
+        self.lock.release()
         return obj
     
     def __len__(self):
         return self.len
+
 
 #data generation starts here.
 print("Generating training and eval data")
@@ -233,8 +250,6 @@ known_ids = []
 
 if not os.path.exists("/tmp/reddit/vl"):
     os.mkdir("/tmp/reddit/vl")
-    os.mkdir("/tmp/reddit/vl/comments")
-    os.mkdir("/tmp/reddit/vl/submissions")
     
     for sub in subreddits:
         print(f"Loading valid submissions data for subreddit r/{sub}")
@@ -287,56 +302,78 @@ else:
     print("Previous data has been detected, and that data will be used.")
     print("If you do not want to reuse the data from the last time this script was run, delete /tmp/reddit before running.")
 
-print("Starting generation of training and eval data")
+if os.path.exists("/tmp/reddit/thr"):
+    shutil.rmtree("/tmp/reddit/thr")
+os.mkdir("/tmp/reddit/thr")
 
 
-while len(training_data) < data_len or len(eval_data) < eval_len:
-    newdat = ""
-    comment = random.choice([True, True, False])
-    if not comment:
-        s = vdsubs.pop(random.randrange(len(vdsubs)))
-        newdat = convert_post(s)
-    else:
-        s = vdcomms.pop(random.randrange(len(vdcomms)))
-        replies = [s]
-        post = None
-        while post is None:
-            if replies[-1]["parent_id"].startswith("t3"):
-                for s2 in vdsubs:
-                    if s2["id"] == str(replies[-1]["parent_id"])[3:]:
-                        post = s2
+def add_training_data(tnum):
+    #os.mkdir(f"/tmp/reddit/thr/{tnum}")
+    vdcomms.lock.acquire()
+    print(f"Preparing data for thread {tnum}...")
+    subs = vdsubs
+    comms = ShatteredList(5000, f"/tmp/reddit/thr/{tnum}")
+    mylen = int(len(vdcomms)/THREAD_NUM)
+    start, end = mylen*tnum, mylen*(tnum+1)
+    for i in range(start, end):
+        try:
+            comms.append(vdcomms[i])
+        except IndexError:
+            break
+    print(f"Finished loading data for thread {tnum}")
+    vdcomms.lock.release()
+    
+    while len(training_data) < data_len or len(eval_data) < eval_len:
+        newdat = ""
+        comment = random.choice([True, True, False])
+        if not comment:
+            s = subs.pop(random.randrange(len(subs)))
+            newdat = convert_post(s)
+        else:
+            s = comms.pop(random.randrange(len(comms)))
+            replies = [s]
+            post = None
+            while post is None:
+                if replies[-1]["parent_id"].startswith("t3"):
+                    for s2 in subs:
+                        if s2["id"] == str(replies[-1]["parent_id"])[3:]:
+                            post = s2
+                            break
+                    else:
                         break
                 else:
-                    break
-            else:
-                for s2 in vdcomms:
-                    if s2["id"] == str(replies[-1]["parent_id"])[3:]:
-                        replies.append(s2)
+                    for s2 in comms:
+                        if s2["id"] == str(replies[-1]["parent_id"])[3:]:
+                            replies.append(s2)
+                            break
+                    else:
                         break
-                else:
-                    break
 
-        if post is None:
-            continue
+            if post is None:
+                continue
 
-        replies.reverse()
-        newdat = convert_thread(post, replies)
+            replies.reverse()
+            newdat = convert_thread(post, replies)   
 
-    if len(training_data) >= data_len:
-        eval_data += newdat
-        print(f"Eval data progress: {len(eval_data) / eval_len}")
-    else:
-        training_data += newdat
-        print(f"Training data progress: {len(training_data) / data_len}")
-        
-trainingl = training_data.split("<|endoftext|>\n")
-evall = eval_data.split("<|endoftext|>\n")
+        dataq.put(newdat)    
 
-trainingl = random.shuffle(trainingl)
-evall = random.shuffle(evall)
+def add_to_data():
+    global eval_data, training_data
+    while len(training_data) < data_len or len(eval_data) < eval_len:
+        newdat = dataq.get()
+        if len(training_data) >= data_len:
+            eval_data += newdat
+            print(f"Eval data progress: {len(eval_data) / eval_len}")
+        else:
+            training_data += newdat
+            print(f"Training data progress: {len(training_data) / data_len}")
 
-training_data = "<|endoftext|>\n".join(trainingl)
-eval_data = "<|endoftext|>\n".join(evall)
+threads = []
+for n in range(THREAD_NUM):
+    threads.append(threading.Thread(target=add_training_data, args=(n,)))
+    threads[n].start()
+
+add_to_data()
 
 with open("training_data.txt", "w") as f:
     f.write(training_data)
