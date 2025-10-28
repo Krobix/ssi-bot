@@ -37,21 +37,19 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 	# This will need to be increased for larger GPT-2 models
 	_memory_required = 1400000
 
-	def __init__(self, username, temprange=(0.8, 1.2)):
+	def __init__(self, username, genlock, temprange=(0.8, 1.2)):
 		threading.Thread.__init__(self)
 
 		self._config = ConfigParser()
 		self._config.read('ssi-bot.ini')
 		self.llama = None
 		self.subreplace = None
+		self.genlock = genlock
 		
 		self.username = username
 		self.name = f"{username}_MTG"
 		self.temprange=temprange
-		if self._config[self.username]["text_model_path"].endswith("gguf"):
-			self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
-			#self.logit_bias = {self.llama.token_eos(): -15.0}
-			self.logit_bias = {}
+			
 			
 		if "subreplace" in self._config[self.username]:
 			self.subreplace = self._config[self.username]["subreplace"].split(",")
@@ -121,6 +119,9 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 								continue
 							else:
 								c+=1
+
+							while gen.endswith("!"):
+								gen = gen[:-1]
 							
 						if tries>=max_tries:
 							continue
@@ -166,55 +167,60 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					job.save()
 
 	def generate_text(self, bot_username, text_generation_parameters):
+		with self.genlock:
+			model_path = self._config[bot_username]['text_model_path']
+			prompt = text_generation_parameters.pop('prompt', '')
+			temp = random.uniform(float(self.temprange[0]), float(self.temprange[1]))
 
-		model_path = self._config[bot_username]['text_model_path']
-		prompt = text_generation_parameters.pop('prompt', '')
-		temp = random.uniform(float(self.temprange[0]), float(self.temprange[1]))
+			if self._config[self.username]["text_model_path"].endswith("gguf"):
+				self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
+				self.logit_bias = {34635: -1000000, 13896: -1000000}
 
-		if self.llama is not None:
-			logging.info("Generating text using llama")
-			gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
-			#if this is a text post.... add the text!!!!!!
-			gen = str(gen)
-			if gen.endswith("<|"):
-				gen = gen[:len(gen)-2]
-			if prompt.endswith("<|sot|>") and prompt.startswith("<|soss"):
-				logging.info("Title generated for text post, proceeding to generate text post body")
-				gen = str(gen) + "<|eot|><|sost|>"
-				gen += str(self.llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"])
-			if not gen.endswith("<|"):
-				gen += "<|"
+			if self.llama is not None:
+				logging.info("Generating text using llama")
+				gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
+				#if this is a text post.... add the text!!!!!!
+				gen = str(gen)
+				if gen.endswith("<|"):
+					gen = gen[:len(gen)-2]
+				if prompt.endswith("<|sot|>") and prompt.startswith("<|soss"):
+					logging.info("Title generated for text post, proceeding to generate text post body")
+					gen = str(gen) + "<|eot|><|sost|>"
+					gen += str(self.llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"])
+				if not gen.endswith("<|"):
+					gen += "<|"
+				
+				logging.info(f"llama finished generating: {str(gen)}")
+				self.llama = None
+				return (prompt,str(gen))
+
+			# if you are generating on CPU, keep use_cuda and fp16 both false.
+			# If you have a nvidia GPU you may enable these features
+			# TODO shift these parameters into the ssi-bot.ini file
+			model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False})
+
+			start_time = time.time()
+
+			# pop the prompt out from the args
+			#set temp
+			text_generation_parameters["temperature"] = float(temp)
 			
-			logging.info(f"llama finished generating: {str(gen)}")
-			return (prompt,str(gen))
+			#if len(prompt)>2048:
+			#	prompt = prompt[len(prompt)-2048:]#b
+			#	promptl = prompt.split(" ")
+			#	if not prompt.startswith("<|"):
+			#		promptl.pop(0)
+			#	prompt = " ".join(promptl)
 
-		# if you are generating on CPU, keep use_cuda and fp16 both false.
-		# If you have a nvidia GPU you may enable these features
-		# TODO shift these parameters into the ssi-bot.ini file
-		model = LanguageGenerationModel("gpt2", model_path, use_cuda=self._use_gpu, args={'fp16': False})
+			output_list = model.generate(prompt=prompt, args=text_generation_parameters)
 
-		start_time = time.time()
+			end_time = time.time()
+			duration = round(end_time - start_time, 1)
 
-		# pop the prompt out from the args
-		#set temp
-		text_generation_parameters["temperature"] = float(temp)
-		
-		#if len(prompt)>2048:
-		#	prompt = prompt[len(prompt)-2048:]#b
-		#	promptl = prompt.split(" ")
-		#	if not prompt.startswith("<|"):
-		#		promptl.pop(0)
-		#	prompt = " ".join(promptl)
+			logging.info(f'{len(output_list)} sample(s) of text generated in {duration} seconds.')
 
-		output_list = model.generate(prompt=prompt, args=text_generation_parameters)
-
-		end_time = time.time()
-		duration = round(end_time - start_time, 1)
-
-		logging.info(f'{len(output_list)} sample(s) of text generated in {duration} seconds.')
-
-		if output_list:
-			return output_list[0]
+			if output_list:
+				return output_list[0]
 
 	def top_pending_jobs(self):
 		"""

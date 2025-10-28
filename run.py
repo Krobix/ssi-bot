@@ -1,4 +1,5 @@
 import logging
+import threading
 import time
 from configparser import ConfigParser
 
@@ -27,12 +28,12 @@ def main():
 	start_t2i_daemon = False
 	
 	mtgl = []
-
+	genlock = threading.Lock()
 	for bot in bot_config.sections():
 
 		# initialise reddit_io
 		bot_io = RedditIO(bot_username=bot)
-		mtgl.append(ModelTextGenerator(bot))
+		mtgl.append(ModelTextGenerator(bot, genlock))
 
 		# Start the reddit IO daemon which will pick up incoming
 		# submissions/comments and send outgoing ones
