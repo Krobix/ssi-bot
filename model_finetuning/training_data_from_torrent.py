@@ -118,9 +118,13 @@ def convert_post(p, end_tag=True):
     else:
         out += f"<|sols r/{p['subreddit']}|>"
 
+    while "\n" in p['title']:
+        p['title'] = p['title'].replace("\n", "\\n")
     out += f"<|sot|>{p['title']}"
 
     if p['is_self']:
+        while "\n" in p["selftext"]:
+            p['selftext'] = p['selftext'].replace("\n", "\\n")
         out += f"<|sost|>{p['selftext']}"
     if end_tag:
         if p['is_self']:
@@ -144,6 +148,8 @@ def convert_thread(post, replies):
             out += "<|soocr|>"
         else:
             out += f"<|sor u/{r['author']}|>"
+        while "\n" in r["body"]:
+            r['body'] = r['body'].replace("\n", "\\n")
         out += r['body']
         parent_2_author = parent_author
         parent_author = r["author"]

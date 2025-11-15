@@ -172,13 +172,18 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 			prompt = text_generation_parameters.pop('prompt', '')
 			temp = random.uniform(float(self.temprange[0]), float(self.temprange[1]))
 
-			if self._config[self.username]["text_model_path"].endswith("gguf"):
-				self.llama = Llama(self._config[self.username]["text_model_path"], use_mmap=True, use_mlock=True, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
+			if "," in self._config[self.username]["text_model_path"]:
+				model = random.choice(self._config[self.username]["text_model_path"].split(",")).strip()
+			else:
+				model = self._config[self.username]["text_model_path"].strip()
+
+			if model.endswith("gguf"):
+				llama = Llama(model, use_mmap=False, use_mlock=False, n_ctx=1024, n_batch=1024, n_threads=6, n_threads_batch=12)
 				self.logit_bias = {34635: -1000000, 13896: -1000000}
 
-			if self.llama is not None:
+			if llama is not None:
 				logging.info("Generating text using llama")
-				gen = self.llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
+				gen = llama(prompt=prompt, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"]
 				#if this is a text post.... add the text!!!!!!
 				gen = str(gen)
 				if gen.endswith("<|"):
@@ -186,12 +191,12 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 				if prompt.endswith("<|sot|>") and prompt.startswith("<|soss"):
 					logging.info("Title generated for text post, proceeding to generate text post body")
 					gen = str(gen) + "<|eot|><|sost|>"
-					gen += str(self.llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"])
+					gen += str(llama(prompt=gen, temperature=float(temp), max_tokens=1024, logit_bias=self.logit_bias, stop=["<|"])["choices"][0]["text"])
 				if not gen.endswith("<|"):
 					gen += "<|"
 				
 				logging.info(f"llama finished generating: {str(gen)}")
-				self.llama = None
+				del llama
 				return (prompt,str(gen))
 
 			# if you are generating on CPU, keep use_cuda and fp16 both false.

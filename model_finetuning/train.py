@@ -15,16 +15,16 @@ model_name = "gpt2-large"
 use_gpu = False
 
 current_date_time = datetime.now()
-bot_label = "videopath"
+bot_label = "drama"
 
 args = {
     "overwrite_output_dir": True,
     "learning_rate": 1e-4,
     # larger batch sizes will use more training data but consume more ram
-    "train_batch_size": 4,
+    "train_batch_size": 1,
     # accumulation steps
-    "gradient_accumulation_steps": 1,
-    "max_steps": 12000,
+    "gradient_accumulation_steps": 12,
+    "max_steps": 22000,
 
     # Use text because of grouping by reddit submission
     "dataset_type": "simple",
@@ -46,13 +46,12 @@ args = {
     "save_eval_checkpoints": True,
     "save_model_every_epoch": False,
     # disable saving each step to save disk space
-    "save_steps": -1, 
+    "save_steps": -1,
 
     "use_multiprocessing": True, # set to false when not using a gpu due to instability (often throws RuntimeErrors)
 
     "output_dir": f"{bot_label}/",
-    "best_model_dir": f"{bot_label}/best_model",
-}
+    "best_model_dir": f"{bot_label}/best_model"}
 
 model = LanguageModelingModel(model_type, model_name, use_cuda=use_gpu)
 
