@@ -92,7 +92,7 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 
 					if self.subreplace is not None and job.subreddit is not None:
 						newsub = random.choice(self.subreplace)
-						while job.subreddit in job.text_generation_parameters["prompt"]:
+						if job.subreddit in job.text_generation_parameters["prompt"]:
 							job.text_generation_parameters["prompt"] = job.text_generation_parameters["prompt"].replace(job.subreddit, newsub)
 
 					generated_text = self.generate_text(job.bot_username, job.text_generation_parameters.copy())
