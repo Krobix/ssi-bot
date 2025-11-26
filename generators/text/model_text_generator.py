@@ -4,6 +4,7 @@ import logging
 import threading
 import time
 import random
+import gc
 
 from pathlib import Path
 from configparser import ConfigParser
@@ -196,7 +197,10 @@ class ModelTextGenerator(threading.Thread, TaggingMixin):
 					gen += "<|"
 				
 				logging.info(f"llama finished generating: {str(gen)}")
+				llama.reset()
+				llama.set_cache(None)
 				del llama
+				gc.collect()
 				return (prompt,str(gen))
 
 			# if you are generating on CPU, keep use_cuda and fp16 both false.
